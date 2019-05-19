@@ -2,7 +2,7 @@
 title: "Google Play Store App Data and How To Use It"
 output: html_document
 knit: (function(input_file, encoding) {
-  out_dir <- 'Documents';
+  out_dir <- '';
   rmarkdown::render(input_file,
  encoding=encoding,
  output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
@@ -15,7 +15,7 @@ Welcome ladies and gentlemen, to the tutorial that will make the rest of your li
 library(tidyverse)
 library(ggplot2)
 library(broom)
-main_data <- read_csv("Documents/googleplaystore.csv")
+main_data <- read_csv("googleplaystore.csv")
 ```
 
 Once we've stored the data in a variable name, we're going to view the data to see what we are working with. I've used the head and tail method in order to view both ends of my data.
@@ -124,7 +124,7 @@ We've done an anti join which is to say that unpopular_apps will filter out ever
 
 With the power of R, we can do anything graph related. We can even plot the relationship between any given variables. Let's start with something simple. We can start with the relationship between Installs and Size.
 
-```{r Installs_Size}
+```{r Installs_Size, warning=FALSE}
 main_data %>%
   ggplot(aes(x=Installs,y=Size)) + geom_point() + scale_x_log10()
 ```
@@ -142,7 +142,7 @@ Due to the discrete nature of our install column, our graph looks like this. Our
 
 ```{r simple plot, warning=FALSE}
 main_data %>%
-  ggplot(aes(x=`Last Updated`,y=Installs,group=factor(is_popular),colour=factor(is_popular))) + geom_point() + geom_smooth(method=lm)
+  ggplot(aes(x=`Last Updated`,y=Installs,group=factor(is_popular),colour=factor(is_popular))) + geom_point() + geom_smooth(method=lm) + scale_y_log10()
 
 ```
 
@@ -184,5 +184,5 @@ main_data %>%
   ggplot(aes(x=`Last Updated`,y=Installs,group=Category,colour=factor(Category)))  + geom_smooth() + geom_point() + scale_y_log10() + facet_wrap(~Category)
 ```
 
-
+Each of thse graphs tells it's own story. We can see
 
