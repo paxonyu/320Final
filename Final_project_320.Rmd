@@ -184,5 +184,6 @@ main_data %>%
   ggplot(aes(x=`Last Updated`,y=Installs,group=Category,colour=factor(Category)))  + geom_smooth() + geom_point() + scale_y_log10() + facet_wrap(~Category)
 ```
 
-Each of thse graphs tells it's own story. We can see
+Each of thse graphs tells it's own story. We can see how entertainment is a relatively recent and constantly updating category. We also see how games as a category is very populated and are approaching a sort of overall average.
+All of this data is public and has incredible potential. Utilizing this data to its fullest potential to draw conclusions about the market and the audience is at the heart of data science. Though not everything has a simple relationship, to search and to fail is also a part of a data scientist's job. I hope you've learned a lot about acquiring, processing, and utilizing data from this tutorial.
 
