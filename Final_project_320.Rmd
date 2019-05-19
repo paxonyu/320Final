@@ -9,7 +9,7 @@ knit: (function(input_file, encoding) {
 ---
 
 ##Data Acquisition
-Welcome ladies and gentlemen, to the tutorial that will make the rest of your life feel underwhelming. In today's tutorial, we will be looking at google play store data, how to acquire it, how to parse it, and the many applications we can get from it. To start off, we're going to need the actual data. I'm using a csv file which stands for "comma separated file" and that is simply a file structure that contains my data. If you want to follow along you can get the same data from [here] (https://www.kaggle.com/lava18/google-play-store-apps/downloads/google-play-store-apps.zip/6) 
+Welcome ladies and gentlemen, to the tutorial that will make the rest of your life feel underwhelming. In today's tutorial, we will be looking at google play store data, how to acquire it, how to parse it, and the many applications we can get from it. To start off, we're going to need the actual data. I'm using a csv file which stands for "comma separated file" and that is simply a file structure that contains my data. If you want to follow along you can get the same data from [here](https://www.kaggle.com/lava18/google-play-store-apps/downloads/google-play-store-apps.zip/6) 
 
 ```{r setup, message=FALSE,warning=FALSE}
 library(tidyverse)
