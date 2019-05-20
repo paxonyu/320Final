@@ -7,55 +7,93 @@ knit: (function(input_file, encoding) {
  encoding=encoding,
  output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
 ---
+##Why Google Play Store App Data?
+As the mobile world becomes increasingly prevalent in every day lives, it's important to understand the marketplace in which these apps are sold. It's important to understand not only for the developers of these apps and how to appeal to the market but it's also important for the consumer, understanding what is popular and why certain apps are popular. Today, I will be walking you through some basic Google Play Store Data and the many things you can do with it.
 
 ##Data Acquisition
-Welcome ladies and gentlemen, to the tutorial that will make the rest of your life feel underwhelming. In today's tutorial, we will be looking at google play store data, how to acquire it, how to parse it, and the many applications we can get from it. To start off, we're going to need the actual data. I'm using a csv file which stands for "comma separated file" and that is simply a file structure that contains my data. If you want to follow along you can get the same data from [here](https://www.kaggle.com/lava18/google-play-store-apps/downloads/google-play-store-apps.zip/6) 
+
+Welcome ladies and gentlemen, to the tutorial that will make the rest of your life feel underwhelming. Today, we will be looking at google play store data, how to acquire it, how to parse it, and the many applications we can get from it. To start off, we're going to need the actual data. I'm using a csv file which stands for "comma separated file" and that is simply a file structure that contains my data. If you want to follow along you can get the same data from [here](https://www.kaggle.com/lava18/google-play-store-apps) 
 
 ```{r setup, message=FALSE,warning=FALSE}
+#importing all of the libraries I will need, tidyverse and readr for basic functions involving data frames, ggplot2 for graphical methods and broom for statstical methods
 library(tidyverse)
 library(ggplot2)
 library(broom)
+library(readr)
+
+#reading the csv into a variable
 main_data <- read_csv("googleplaystore.csv")
 ```
 
-Once we've stored the data in a variable name, we're going to view the data to see what we are working with. I've used the head and tail method in order to view both ends of my data.
+Once we've stored the data in a variable name, we're going to view the data to see what we are working with. I've used the head and tail method in order to view both ends of my data. I'm also going to clean up the names of certain variables so that they are easier to use later on.
 
 ```{r viewing the data}
+names(main_data)[1] <- "title"
+names(main_data)[9] <- "content_rating"
+names(main_data)[11] <- "last_updated"
+names(main_data)[12] <- "curr_ver"
+names(main_data)[13] <- "and_ver"
+
+#head displays the first few data entries
 head(main_data)
+
+#tail displays the last few data entries
 tail(main_data)
+
+
+
 ```
+If your data doesn't come in the form of a csv, check out this [tutorial](https://www.kaggle.com/rtatman/manipulating-data-with-the-tidyverse) on Kaggle
+
 
 #Data Cleaning And Parsing
 
 We can see that we have a lot categories from our data. In order, we have our App (our title), the category the app belongs to, the current rating, the number of reviews, the size of the app, the number of installs, whether it is a paid or free app, the price (0 if free), the content rating, the genre the app falls into, the last updated date, the current version of the app and the android version of the app.
 Right off the bat, we can see that we're going to run into some trouble with the current data. For example, if we wanted to analyze how many installs an app has, we're going to need the installs column to function as a number. However, currently the Installs column functions as a series of characters because of the "+" appended to the end of it. Let's convert the column into a double value by first removing the "+" and the commas at the end of and within each entry and converting the type of the column into a double.
-```{r column_type_change}
+```{r column_type_change,warning=FALSE}
+
+#removes the + from each entry
 main_data$Installs = gsub("\\+","",main_data$Installs)
+
+#converts each entry into a numeric variable rather than a character variable
 main_data$Installs = as.numeric(gsub("\\,","",main_data$Installs))
 head(main_data)
 ```
 As we can see, this worked out very well and we now have an a numeric column for us to work with when analyzing the data. One thing to mention is that data set that we find outselves using does not have exact numbers on installs which means that any analysis will have some sort of error. For example, if we had 10,000+, the app could have any value between 10,000 and 10,999 assuming that the next value would have been 11,000+. There is nothing that we can do about this since the dataset does not give us the exact values. 
 Before continuing, I will also make a few changes to the columns such as making the price column a numeric value and I will convert the Last Updated column into a date time variable. The last thing I will do is remove the genres column. While some apps can belong in other categories, the genre's column for the most part is a repeat of the category column. In addition, I will also modify the size column. I will truncate the "M" and the assumed measuring units will be megabytes. Size also has an interesting quality. 
 Some entries have a "Varies with Device" when it comes to size most likely due to hardware limitations. Since no app can have a size 0, I will be replacing all of the "Varies with Device" entries with 0. In addition, some less popular apps have no rating, I will have the default rating set to 0.
-```{r more_column_changes}
-library(readr)
+```{r more_column_changes,warning=FALSE}
+#Removes extra characters from the price and converts it into a numeric variable, then divides by 100 in order to make it in dollars
 main_data$Price = gsub("\\.","",main_data$Price)
 main_data$Price = as.numeric(gsub("\\$","",main_data$Price))
+main_data <- main_data %>% 
+  mutate(Price=Price/100)
+#Converts the last_updated column into a datetime object
 main_data <- main_data %>%
-  type_convert(col_types=cols(`Last Updated`=col_datetime(format="%B %d, %Y")))
+  type_convert(col_types=cols(last_updated=col_datetime(format="%B %d, %Y")))
 main_data$Genres = NULL
+#Converts the size column to a numeric variable
 main_data$Size = gsub("M","",main_data$Size)
 main_data$Size = as.numeric(gsub("Varies with device","0",main_data$Size))
+#Converts any NA's in Rating to 0
 main_data %>%
   replace_na(list(Rating=0))
-main_data
+
+#Creates a year column from the datetime variable and creates a periods variable that segments the data into 5 equally sized time periods
+main_data <- main_data %>%
+  mutate(year=strftime(last_updated,"%Y")) 
+main_data$year = as.numeric(main_data$year)
+main_data <- main_data %>%
+  mutate(periods=cut(year,breaks=5))
+
 ```
 
 #Exploratory Data Analysis
 
 Now that our data is fully prepared, it's time to see what information we can collect. For the purposes of this tutorial, let's go over some basic functions in R. In R, we have a method called filter which will filter out entries based on a condition.
 So, for example, we want to find the really popular apps and our definition of popular is an app that gains more than 1,000,000 downloads. Well, with our already clean data, we can acquire that information like this. In addition, let's make a modification in our main table to identify which apps are popular.
-```{r popular}
+```{r popular,warning=FALSE}
+#creates an attribute to see if the app is popular and then creates a separate table with only the popular apps
 main_data <- main_data %>%
   mutate(is_popular=ifelse(Installs < 1000000,FALSE,TRUE))
 popular_apps <- filter(main_data,Installs > 1000000)
@@ -63,9 +101,13 @@ popular_apps
 ```
 Wow, truly an incredible feat of technology. However, we can go one step further and try and see some summary stats. We can do this by grouping these apps by their category. So for this example, to keep the numbers simple, we'll be using the table we just created of all the popular apps. Let's see, we'll do total number of installs, total number of reviews, ratio of installs to reviews, and average rating. We're doing everything so try and keep up.
 ```{r everything}
+#Summarizes total installs, ratio of installs to review, total reviews, and average ratings by category
 popular_apps %>%
   group_by(Category) %>%
-  summarize(total_installs=sum(Installs),total_review=sum(Reviews),ratio_install_to_review=total_installs/total_review,average_rating=mean(Rating)) %>%
+  summarize(total_installs=sum(Installs)
+            ,total_review=sum(Reviews),
+            ratio_install_to_review=total_installs/total_review,
+            average_rating=mean(Rating)) %>%
   arrange(desc(total_installs))
 ```
 A lot of juicy information in the table above all depending on what you sort it by. In our case, we arranged the inforamtion in descending order based on total installs. To nobody's surprise, the game category has an explosive lead in terms of total_installs. Other cool things to note is that the average rating for every category hovers around 4.2/4.3 range. This is probably because our sample size is just the most popular apps as opposed to our entire data set. 
@@ -73,27 +115,31 @@ A lot of juicy information in the table above all depending on what you sort it 
 Another useful method is the select method which allows us to select particular attributes from tables. For example, if we wanted to streamline our data processing by only looking at the attributes that we will be using, we can use the select function.
 
 ```{r useful_att}
+#demonstrates the usefulness of select by only selecting particular attributes
 useful_att <- main_data %>%
-  select("App","Installs","Category","Last Updated","Size")
+  select("title","Installs","Category","last_updated","Size")
 useful_att
 ```
 With these tools, we can gather important information like summary statistics by category.
 ```{r most_pop}
 most_pop <- main_data %>%
   group_by(Category) %>%
-  summarize(min=min(Installs),max=max(Installs),mean=mean(Installs)) %>%
-  arrange(desc(mean))
+  summarize(min=min(Installs),
+            max=max(Installs),
+            mean=mean(Installs)) 
 most_pop
 ```
 For later, let's get the top 10 most popular categories by average installs.
 
 ```{r top_ten_cate}
-most_pop <- main_data %>%
+ten_pop <- main_data %>%
   group_by(Category) %>%
-  summarize(min=min(Installs),max=max(Installs),mean=mean(Installs)) %>%
+  summarize(min=min(Installs),
+            max=max(Installs),
+            mean=mean(Installs)) %>%
   arrange(desc(mean)) %>%
   slice(1:10)
-most_pop
+ten_pop
 ```
 
 
@@ -103,15 +149,21 @@ The language R has this limitation that when we're dealing with large numbers, i
 
 ```{r unpopular, warning=TRUE}
 unpopular_apps <- main_data %>%
-  anti_join(popular_apps, by=c("App","Reviews","Installs"))  
+  anti_join(popular_apps, by=c("title","Reviews","Installs"))  
 
 
 popular_app_stats <- popular_apps %>%
-  summarize(total_installs=sum(Installs),total_review=sum(Reviews),ratio_install_to_review=total_installs/total_review,average_rating=mean(Rating),mean_installs=mean(Installs)) 
+  summarize(total_installs=sum(Installs),total_review=sum(Reviews),
+            ratio_install_to_review=total_installs/total_review,
+            average_rating=mean(Rating),mean_installs=mean(Installs)) 
 popular_app_stats
 
 unpopular_app_stats <- unpopular_apps %>%
-  summarize(total_installs=sum(Installs,na.rm=TRUE),total_review=sum(Reviews,na.rm=TRUE),ratio_install_to_review=total_installs/total_review,average_rating=mean(Rating,na.rm=TRUE),mean_installs=mean(Installs,na.rm=TRUE)) 
+  summarize(total_installs=sum(Installs,na.rm=TRUE),
+            total_review=sum(Reviews,na.rm=TRUE),
+            ratio_install_to_review=total_installs/total_review,
+            average_rating=mean(Rating,na.rm=TRUE),
+            mean_installs=mean(Installs,na.rm=TRUE)) 
 unpopular_app_stats
 
 combined = rbind(popular_app_stats,unpopular_app_stats)
@@ -120,9 +172,71 @@ combined
 
 We've done an anti join which is to say that unpopular_apps will filter out everything that ISN'T in popular_apps. The resulting data shouldn't really be surprising to anybody. The total number of installs is higher in the popular app group by definition as is the number of mean installs. However, more interestingly, popularity does not seem to determine the install to review ratio nor does it seem to affect average rating a lot. I would've expected to see more variance with the average rating but this is a summary statistic after all.
 
-## Graphing Relationships
+## Graphing Data and Relationships
 
-With the power of R, we can do anything graph related. We can even plot the relationship between any given variables. Let's start with something simple. We can start with the relationship between Installs and Size.
+With the power of R, we can do anything graph related. We can even plot the relationship between any given variables. Let's start with something simple. Graphing how many apps are in each category. For more information on the power of ggplot check out the documentation reference located [here](https://ggplot2.tidyverse.org/reference/)
+
+```{r category_bar, warning=FALSE}
+main_data %>%
+  group_by(Category) %>%
+  count() %>%
+  ggplot(aes(x=Category,y=n,colour=Category)) + geom_bar(stat="identity")
+```
+The two largest categories in the center are family and games. But why is any of this important. Well knowing the distribution of the Google Play Store can help potential developers understand the market and target certain demographics. 
+
+Another fixed statistic that we can attempt to graph is the content rating distribution.
+
+```{r content_rating, warning=FALSE}
+main_data %>%
+  group_by(content_rating) %>%
+  count() %>%
+  ggplot(aes(x=content_rating,y=n,colour=content_rating)) + geom_bar(stat="identity")
+```
+And finally, we can visualize the portion of apps that are free and the portion of apps that aren't free.
+```{r Price_and_type, warning=FALSE}
+main_data %>%
+  group_by(Type) %>%
+  count() %>%
+  ggplot(aes(x=Type,y=n,colour=Type)) + geom_bar(stat="identity")
+
+main_data %>%
+  group_by(Price) %>%
+  count() %>%
+  ggplot(aes(x=Price,y=n,colour=Price)) + geom_bar(stat="identity")
+```
+The type bar graph shouldn't be a surprise to anybody. The large majority of apps on the google play store are free as most people enjoy free apps. However, the bar graph representing the actual price distribution is some what surprising. There happen to be a handful of outliers located near the 40,000 range. Let's do a little sub-exploration of these apps to see what we can find. Let's begin by determining what apps are so unbelievably expensive.
+
+#Sub-Exploration: Price and Revenue
+To start, with let's get the top 10 most expensive apps and some preliminary information.
+
+```{r most_expensive, warning=FALSE}
+main_data %>%
+  arrange(desc(Price)) %>%
+  slice(1:10) %>%
+  select(title,Category,Rating,Reviews,Size,Installs,Price)
+```
+
+We can clearly observe that these apps all have a common theme to them. But in order to get a better sense of how much money these apps have made, let's create another column in order to determine the revenue of all of the paid apps.
+
+
+```{r revenue, warning=FALSE}
+paid_apps <- main_data %>%
+  filter(Type=="Paid") %>%
+  mutate(revenue=Installs*Price) %>%
+  arrange(desc(revenue))
+paid_apps
+```
+
+```{r price_revenue, warning=FALSE}
+paid_apps %>%
+  group_by(Category) %>%
+  ggplot(aes(x=Price,y=revenue)) + geom_point() 
+```
+The relationship between price and revenue appears to be bimodal which indicates that if you really want a large revenue based solely on the price of your app, you should aim for pricing your app either very low or very high.
+
+
+#Graphing Other Relationships
+We can start with the relationship between Installs and Size. 
 
 ```{r Installs_Size, warning=FALSE}
 main_data %>%
@@ -131,7 +245,7 @@ main_data %>%
 To nobodies surprise, it doesn't seem that there is a relationship between how large an app is and how many installs it receives. Even at the extreme end of installs, the size of an app does not seem to dictate how popular it will be.
 
 
-One of the questions, I've always wanted to learn was the relationship between installs and rating. For an app, the number of installs is one of the main metrics used to determine success. Rating, is another one of those metrics. In order to see the relationship between these two variables let's plot them. I also scaled the x axis logarithmically in order to make the data easier to visualize.
+One of the questions, I've always wanted to learn was the relationship between installs and rating. For an app, the number of installs is one of the main metrics used to determine success. Rating, is another one of those metrics. In order to see the relationship between these two variables let's plot them. I also scaled the x axis logarithmically in order to make the data easier to visualize. To understand why I used a logarithmic scale, check out this link [here](http://onlinestatbook.com/2/transformations/log.html)
 
 ```{r simple_plot, warning=FALSE}
 main_data %>%
@@ -142,30 +256,42 @@ Due to the discrete nature of our install column, our graph looks like this. Our
 
 ```{r simple plot, warning=FALSE}
 main_data %>%
-  ggplot(aes(x=`Last Updated`,y=Installs,group=factor(is_popular),colour=factor(is_popular))) + geom_point() + geom_smooth(method=lm) + scale_y_log10()
+  ggplot(aes(x=last_updated,y=Installs,group=factor(is_popular),colour=factor(is_popular))) + geom_point() + geom_smooth(method=lm) + scale_y_log10()
 
 ```
 
 As we can see, the popular apps have a slightly upward trend when it comes to the linear regression. This makes sense as we can expect apps that are popular to be updated more recently than all other apps. But how much? 
-Let's take a look at the exact numbers and see what we can gather.
+Let's take a look at the exact numbers and see what we can gather. To understand what a linear regression is, check out this [link](https://en.wikipedia.org/wiki/Linear_regression)
 
 ```{r numbers}
-pop_linear <- lm(Installs~`Last Updated`,data=popular_apps)
+pop_linear <- lm(Installs~last_updated,data=popular_apps)
 pop_linear
-non_pop_linear <- lm(Installs~`Last Updated`,data=unpopular_apps)
+non_pop_linear <- lm(Installs~last_updated,data=unpopular_apps)
 non_pop_linear
 ```
 From this linear regression, we can conclude many things about the data we are looking at. Assuming linearity, the intercept for each regression represents how many installs an app would have to start at the very beginning of time which is less important for our uses since we're only talking about a particular time frame starting from around 2010. However, more importantly is the coefficient of the regression which represents how many installs one can expect by updating their app one day later. We can see that for the popular app this coefficient is much larger indicating that a more recent update will lead to a higher increase in installs. 
-One additional thing that we can check however, is how other factors play into the success of an app. Last updated date is just one aspect that we can check however, I hypothesize that category can also play an important factor in determining how successful an app can be. In order to do that, we have to add an interaction term for category
+
+Something else we can check is how the market changes over time. Earlier in this tutorial, we added a column called periods that separate the apps into 5 equally spaced out time periods. Let's do the same graph we did before except separate it by periods.
+
+```{r periods, warning=FALSE}
+main_data %>%
+  ggplot(aes(x=last_updated,y=Installs,group=factor(is_popular),colour=factor(is_popular))) + geom_point() + geom_smooth(method=lm) + scale_y_log10() + facet_wrap(~periods)
+
+```
+With this dataset, we can see that each period has a different concentration of apps and a different regression. The regression for the most recent period appears to be more positive relative to the rest of the time periods.
+
+One additional thing that we can check however, is how other factors play into the success of an app. Last updated date is just one aspect that we can check however, I hypothesize that category can also play an important factor in determining how successful an app can be. In order to do that, we have to add an interaction term for category.
+
 
 ```{r interaction}
-pop_interaction <- lm(Installs~`Last Updated`*Category,data=popular_apps)
+pop_interaction <- lm(Installs~last_updated*Category,data=popular_apps)
 tidy(pop_interaction) %>%
   arrange(desc(estimate))
-non_pop_interaction <- lm(Installs~`Last Updated`*Category,data=unpopular_apps)
+non_pop_interaction <- lm(Installs~last_updated*Category,data=unpopular_apps)
 anova(pop_interaction)
 anova(non_pop_interaction)
 ```
+I applied the ANOVA function which stands for the analysis of variance. It tests for statistical variance and you can learn more about it [here](https://en.wikipedia.org/wiki/Analysis_of_variance).
 For our statistical analysis, we mainly want to focus on the last column. The smaller the value, the higher the likelihood that our statistical model is likely. As we can see, with the non popular apps (9.027e-11), the interaction term is much more accurate in predicting total installs than with our popular group (0.5945).
 Let's plot the residuals for this data set to see what we can find.
 
@@ -181,9 +307,9 @@ Our last magic trick of today is to use a geom_smooth line in order to graph the
 ```{r something,warning=FALSE}
 main_data %>%
   filter(Category %in% c("COMMUNICATION","SOCIAL","VIDEO_PLAYERS","VIDEO","PRODUCTIVITY","GAME","PHOTOGRAPHY","TRAVEL_AND_LOCAL","NEWS_AND_MAGAZINE","ENTERTAINMENT","TOOLS")) %>%
-  ggplot(aes(x=`Last Updated`,y=Installs,group=Category,colour=factor(Category)))  + geom_smooth() + geom_point() + scale_y_log10() + facet_wrap(~Category)
+  ggplot(aes(x=last_updated,y=Installs,group=Category,colour=factor(Category)))  + geom_smooth() + geom_point() + scale_y_log10() + facet_wrap(~Category)
 ```
 
 Each of thse graphs tells it's own story. We can see how entertainment is a relatively recent and constantly updating category. We also see how games as a category is very populated and are approaching a sort of overall average.
-All of this data is public and has incredible potential. Utilizing this data to its fullest potential to draw conclusions about the market and the audience is at the heart of data science. Though not everything has a simple relationship, to search and to fail is also a part of a data scientist's job. I hope you've learned a lot about acquiring, processing, and utilizing data from this tutorial.
+All of this data is public and has incredible potential. Utilizing this data to its fullest potential to draw conclusions about the market and the audience is at the heart of data science. Though not everything has a simple relationship, to search and to fail is also a part of a data scientist's job. I hope you've learned a lot about acquiring, processing, and utilizing data from this tutorial. If you want to know more about data science, check out this overview of the subject by an incredible [professor](http://www.hcbravo.org/IntroDataSci/) at UMD.
 
