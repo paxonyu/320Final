@@ -326,5 +326,6 @@ main_data %>%
 ```
 
 Each of thse graphs tells it's own story. We can see how entertainment is a relatively recent and constantly updating category. We also see how games as a category is very populated and are approaching a sort of overall average.
+##Conclusion
 All of this data is public and has incredible potential. Utilizing this data to its fullest potential to draw conclusions about the market and the audience is at the heart of data science. Though not everything has a simple relationship, to search and to fail is also a part of a data scientist's job. I hope you've learned a lot about acquiring, processing, and utilizing data from this tutorial. If you want to know more about data science, check out this overview of the subject by an incredible [professor](http://www.hcbravo.org/IntroDataSci/) at UMD.
 
