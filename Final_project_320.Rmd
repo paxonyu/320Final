@@ -40,8 +40,6 @@ head(main_data)
 #tail displays the last few data entries
 tail(main_data)
 
-
-
 ```
 If your data doesn't come in the form of a csv, check out this [tutorial](https://www.kaggle.com/rtatman/manipulating-data-with-the-tidyverse) on Kaggle
 
@@ -91,12 +89,13 @@ main_data <- main_data %>%
 #Exploratory Data Analysis
 
 Now that our data is fully prepared, it's time to see what information we can collect. For the purposes of this tutorial, let's go over some basic functions in R. In R, we have a method called filter which will filter out entries based on a condition.
-So, for example, we want to find the really popular apps and our definition of popular is an app that gains more than 1,000,000 downloads. Well, with our already clean data, we can acquire that information like this. In addition, let's make a modification in our main table to identify which apps are popular.
+So, for example, we want to find the really popular apps and our definition of popular is an app that gains more than 1,000,000 downloads. Well, with our already clean data, we can acquire that information like this. In addition, let's make a modification in our main table to identify which apps are popular. We can even determine which app is the most popular by arranging the apps in descending order based on installs.
 ```{r popular,warning=FALSE}
 #creates an attribute to see if the app is popular and then creates a separate table with only the popular apps
 main_data <- main_data %>%
   mutate(is_popular=ifelse(Installs < 1000000,FALSE,TRUE))
-popular_apps <- filter(main_data,Installs > 1000000)
+popular_apps <- filter(main_data,Installs > 1000000) %>%
+  arrange(desc(Installs))
 popular_apps
 ```
 Wow, truly an incredible feat of technology. However, we can go one step further and try and see some summary stats. We can do this by grouping these apps by their category. So for this example, to keep the numbers simple, we'll be using the table we just created of all the popular apps. Let's see, we'll do total number of installs, total number of reviews, ratio of installs to reviews, and average rating. We're doing everything so try and keep up.
@@ -122,7 +121,8 @@ useful_att
 ```
 With these tools, we can gather important information like summary statistics by category.
 ```{r most_pop}
-most_pop <- main_data %>%
+#getting the summary statistics for th epopular apps
+most_pop <- popular_apps %>%
   group_by(Category) %>%
   summarize(min=min(Installs),
             max=max(Installs),
@@ -132,6 +132,7 @@ most_pop
 For later, let's get the top 10 most popular categories by average installs.
 
 ```{r top_ten_cate}
+#getting the summary statistics for the top 10 categories
 ten_pop <- main_data %>%
   group_by(Category) %>%
   summarize(min=min(Installs),
@@ -148,24 +149,23 @@ This gives me a wonderful idea to compare the aggregate data to the data of our 
 The language R has this limitation that when we're dealing with large numbers, if the numbers get too large, the program tends to spit out NaN. To combat this, for our comparison exercises we'll be using two data sets. One data set will consist of the top 100 apps (based on installs) and the other will consist of the lowest 100 apps.
 
 ```{r unpopular, warning=TRUE}
+#Anti joining the data in order to get all of the remaining "unpopular" apps
 unpopular_apps <- main_data %>%
   anti_join(popular_apps, by=c("title","Reviews","Installs"))  
 
-
+#getting stats for the popular apps
 popular_app_stats <- popular_apps %>%
   summarize(total_installs=sum(Installs),total_review=sum(Reviews),
             ratio_install_to_review=total_installs/total_review,
             average_rating=mean(Rating),mean_installs=mean(Installs)) 
-popular_app_stats
-
+#getting stats for the unpopular apps
 unpopular_app_stats <- unpopular_apps %>%
   summarize(total_installs=sum(Installs,na.rm=TRUE),
             total_review=sum(Reviews,na.rm=TRUE),
             ratio_install_to_review=total_installs/total_review,
             average_rating=mean(Rating,na.rm=TRUE),
             mean_installs=mean(Installs,na.rm=TRUE)) 
-unpopular_app_stats
-
+#combining the two to make viewing easier
 combined = rbind(popular_app_stats,unpopular_app_stats)
 combined
 ```
@@ -177,6 +177,7 @@ We've done an anti join which is to say that unpopular_apps will filter out ever
 With the power of R, we can do anything graph related. We can even plot the relationship between any given variables. Let's start with something simple. Graphing how many apps are in each category. For more information on the power of ggplot check out the documentation reference located [here](https://ggplot2.tidyverse.org/reference/)
 
 ```{r category_bar, warning=FALSE}
+#graphing how many apps are in each category
 main_data %>%
   group_by(Category) %>%
   count() %>%
@@ -187,6 +188,7 @@ The two largest categories in the center are family and games. But why is any of
 Another fixed statistic that we can attempt to graph is the content rating distribution.
 
 ```{r content_rating, warning=FALSE}
+#graphing how many apps per content rating
 main_data %>%
   group_by(content_rating) %>%
   count() %>%
@@ -194,11 +196,13 @@ main_data %>%
 ```
 And finally, we can visualize the portion of apps that are free and the portion of apps that aren't free.
 ```{r Price_and_type, warning=FALSE}
+#Graphing Type which is a discrete variable either free or paid
 main_data %>%
   group_by(Type) %>%
   count() %>%
   ggplot(aes(x=Type,y=n,colour=Type)) + geom_bar(stat="identity")
 
+#graphing price which is a continuous variable
 main_data %>%
   group_by(Price) %>%
   count() %>%
@@ -210,6 +214,7 @@ The type bar graph shouldn't be a surprise to anybody. The large majority of app
 To start, with let's get the top 10 most expensive apps and some preliminary information.
 
 ```{r most_expensive, warning=FALSE}
+#retrieving the most expensive apps
 main_data %>%
   arrange(desc(Price)) %>%
   slice(1:10) %>%
@@ -220,6 +225,7 @@ We can clearly observe that these apps all have a common theme to them. But in o
 
 
 ```{r revenue, warning=FALSE}
+#creating a revenue variable
 paid_apps <- main_data %>%
   filter(Type=="Paid") %>%
   mutate(revenue=Installs*Price) %>%
@@ -228,6 +234,7 @@ paid_apps
 ```
 
 ```{r price_revenue, warning=FALSE}
+#plotting it out
 paid_apps %>%
   group_by(Category) %>%
   ggplot(aes(x=Price,y=revenue)) + geom_point() 
@@ -239,6 +246,7 @@ The relationship between price and revenue appears to be bimodal which indicates
 We can start with the relationship between Installs and Size. 
 
 ```{r Installs_Size, warning=FALSE}
+#plotting Installs to Size relationship
 main_data %>%
   ggplot(aes(x=Installs,y=Size)) + geom_point() + scale_x_log10()
 ```
@@ -248,6 +256,7 @@ To nobodies surprise, it doesn't seem that there is a relationship between how l
 One of the questions, I've always wanted to learn was the relationship between installs and rating. For an app, the number of installs is one of the main metrics used to determine success. Rating, is another one of those metrics. In order to see the relationship between these two variables let's plot them. I also scaled the x axis logarithmically in order to make the data easier to visualize. To understand why I used a logarithmic scale, check out this link [here](http://onlinestatbook.com/2/transformations/log.html)
 
 ```{r simple_plot, warning=FALSE}
+#Plotting relationship to Installs with a linear regression
 main_data %>%
   ggplot(aes(x=Installs,y=Rating)) + geom_point() + ylim(0,5) + geom_smooth(method=lm) + scale_x_log10()
 ```
@@ -255,6 +264,7 @@ main_data %>%
 Due to the discrete nature of our install column, our graph looks like this. Our linear regression model also appears to be relatively flat indicating that there is almost no relationship between the two variables. Let's look at another relationship, the relationship between last updated and installs. This time, we will separate based on popularity and apply a linear regression.
 
 ```{r simple plot, warning=FALSE}
+#Plotting last updated to installs and differentiating based on popularity
 main_data %>%
   ggplot(aes(x=last_updated,y=Installs,group=factor(is_popular),colour=factor(is_popular))) + geom_point() + geom_smooth(method=lm) + scale_y_log10()
 
@@ -264,6 +274,7 @@ As we can see, the popular apps have a slightly upward trend when it comes to th
 Let's take a look at the exact numbers and see what we can gather. To understand what a linear regression is, check out this [link](https://en.wikipedia.org/wiki/Linear_regression)
 
 ```{r numbers}
+#getting statistics on the linear regression model
 pop_linear <- lm(Installs~last_updated,data=popular_apps)
 pop_linear
 non_pop_linear <- lm(Installs~last_updated,data=unpopular_apps)
@@ -274,6 +285,7 @@ From this linear regression, we can conclude many things about the data we are l
 Something else we can check is how the market changes over time. Earlier in this tutorial, we added a column called periods that separate the apps into 5 equally spaced out time periods. Let's do the same graph we did before except separate it by periods.
 
 ```{r periods, warning=FALSE}
+#Graphing based on time periods
 main_data %>%
   ggplot(aes(x=last_updated,y=Installs,group=factor(is_popular),colour=factor(is_popular))) + geom_point() + geom_smooth(method=lm) + scale_y_log10() + facet_wrap(~periods)
 
@@ -284,6 +296,7 @@ One additional thing that we can check however, is how other factors play into t
 
 
 ```{r interaction}
+#Using an analysis of variance to determine whether category can determine Installs
 pop_interaction <- lm(Installs~last_updated*Category,data=popular_apps)
 tidy(pop_interaction) %>%
   arrange(desc(estimate))
@@ -296,6 +309,7 @@ For our statistical analysis, we mainly want to focus on the last column. The sm
 Let's plot the residuals for this data set to see what we can find.
 
 ```{r interaction_non_pop}
+#plotting fitted to residuals to see the relationship
 non_pop_augment <- augment(non_pop_interaction) %>%
   ggplot(aes(x=.fitted, y=.resid)) + geom_point()
 non_pop_augment
@@ -305,6 +319,7 @@ This residual plot tells us that the data that we are matching probably does not
 Our last magic trick of today is to use a geom_smooth line in order to graph the top 10 categories based on mean installs.
 
 ```{r something,warning=FALSE}
+#plotting based on category to see individual trends within categories
 main_data %>%
   filter(Category %in% c("COMMUNICATION","SOCIAL","VIDEO_PLAYERS","VIDEO","PRODUCTIVITY","GAME","PHOTOGRAPHY","TRAVEL_AND_LOCAL","NEWS_AND_MAGAZINE","ENTERTAINMENT","TOOLS")) %>%
   ggplot(aes(x=last_updated,y=Installs,group=Category,colour=factor(Category)))  + geom_smooth() + geom_point() + scale_y_log10() + facet_wrap(~Category)
